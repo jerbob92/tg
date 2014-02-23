@@ -421,6 +421,10 @@ int code_is_sent (void) {
   return want_dc_num;
 }
 
+int phone_is_called (void) {
+  return want_dc_num;
+}
+
 int config_got (void) {
   return DC_list[want_dc_num] != 0;
 }
@@ -468,6 +472,43 @@ void do_send_code (const char *user) {
   net_loop (0, code_is_sent);
   assert (want_dc_num == -1);
 }
+
+void do_phone_call (const char *user) {
+  logprintf ("sending code\n");
+  suser = tstrdup (user);
+  want_dc_num = 0;
+  clear_packet ();
+  do_insert_header ();
+  out_int (CODE_auth_send_call);
+  out_string (user);
+  out_string (phone_code_hash);
+
+  logprintf ("send_code: dc_num = %d\n", dc_working_num);
+  send_query (DC_working, packet_ptr - packet_buffer, packet_buffer, &send_code_methods, 0);
+  net_loop (0, code_is_sent);
+  if (want_dc_num == -1) { return; }
+
+  DC_working = DC_list[want_dc_num];
+  if (!DC_working->sessions[0]) {
+    dc_create_session (DC_working);
+  }
+  dc_working_num = want_dc_num;	
+
+  bl_do_set_working_dc (dc_working_num);
+
+  logprintf ("send_code: dc_num = %d\n", dc_working_num);
+  want_dc_num = 0;
+  clear_packet ();
+  do_insert_header ();
+  out_int (CODE_auth_send_call);
+  out_string (user);
+  out_string (phone_code_hash);
+
+  send_query (DC_working, packet_ptr - packet_buffer, packet_buffer, &send_code_methods, 0);
+  net_loop (0, phone_is_called);
+  assert (want_dc_num == -1);
+}
+
 /* }}} */
 
 /* {{{ Check phone */

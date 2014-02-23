@@ -517,19 +517,38 @@ int loop (void) {
       do_send_code (default_username);
       char *code = 0;
       size_t size = 0;
-      printf ("Code from sms: ");
+      printf ("Code from sms (type 0 to switch to phone system): ");
       while (1) {
         if (net_getline (&code, &size) == -1) {
           perror ("getline()");
           exit (EXIT_FAILURE);
         }
-        if (do_send_code_result (code) >= 0) {
-          break;
+        if (!*code || *code == '0') {
+          printf ("You typed 0, switching to phone system. ");
+          printf ("Calling you! Code: ");
+          do_phone_call (default_username);
+          char *code_phone = 0;
+          size_t size_phone = 0;
+          while (1) {
+            if (net_getline (&code_phone, &size_phone) == -1) {
+              perror ("getline()");
+              exit (EXIT_FAILURE);
+            }
+            printf ("Invalid code. Try again: ");
+            tfree_str (code);
+          }
+        } else {
+
+          if (do_send_code_result (code) >= 0) {
+            break;
+          }
+          printf ("Invalid code. Try again: ");
+          tfree_str (code);
         }
-        printf ("Invalid code. Try again: ");
-        tfree_str (code);
       }
-      auth_state = 300;
+      if(auth_state != 2000) {
+        auth_state = 300;
+      }
     } else {
       printf ("User is not registered. Do you want to register? [Y/n] ");
       char *code;
@@ -577,6 +596,19 @@ int loop (void) {
       }
       auth_state = 300;
     }
+  }
+
+  if (auth_state == 3000) {
+      //do_call (default_username);
+      char *code = 0;
+      size_t size = 0;
+      printf ("We are calling you! Code from phone call: ");
+      while (1) {
+        if (net_getline (&code, &size) == -1) {
+          perror ("getline()");
+          exit (EXIT_FAILURE);
+        }
+      }
   }
 
   for (i = 0; i <= MAX_DC_NUM; i++) if (DC_list[i] && !DC_list[i]->has_auth) {
